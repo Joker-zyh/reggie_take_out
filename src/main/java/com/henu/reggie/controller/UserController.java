@@ -38,7 +38,7 @@ public class UserController {
         log.info("code:{}",code);
 
         //调用api发短信
-        //SMSUtils.sendMessage("joker","SMS_462010462",phone,code);
+        SMSUtils.sendMessage("joker","SMS_462010462",phone,code);
 
         //将手机号和验证码存入session
         request.getSession().setAttribute(phone,code);
