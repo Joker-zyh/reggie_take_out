@@ -8,7 +8,15 @@ spring:
       driver-class-name: com.mysql.cj.jdbc.Driver
       url: jdbc:mysql://localhost:3306/reggie?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
       username: root
-      password: Wdmm790268.
+      #password: Wdmm790268.
+      password: 790268
+  #redis
+  redis:
+    host: localhost
+    #password: 790268
+    port: 6379
+    database: 0
+
 
 mybatis-plus:
   configuration:
