@@ -16,6 +16,9 @@ import com.henu.reggie.service.SetmealService;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -73,6 +76,7 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
      */
     @Transactional
     @Override
+    @CacheEvict(value = "setmealCache",key = "#setmealDto.categoryId + '_1'")
     public Result<SetmealDto> insert(SetmealDto setmealDto) {
         //新增套餐
         setmealMapper.insert(setmealDto);
@@ -116,6 +120,7 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
      */
     @Transactional
     @Override
+    @CacheEvict(value = "setmealCache",key = "#setmealDto.categoryId + '_1'")
     public Result<SetmealDto> updateWithDish(SetmealDto setmealDto) {
         setmealMapper.updateById(setmealDto);
 
@@ -140,6 +145,7 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
      */
     @Transactional
     @Override
+    @CacheEvict(value = "setmealCache",allEntries = true)
     public Result<String> delete(List<Long> ids) {
         LambdaQueryWrapper<Setmeal> lqw = new LambdaQueryWrapper<>();
         lqw.in(Setmeal::getId,ids);
@@ -165,14 +171,15 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
      * @return
      */
     @Override
+    @Cacheable(value = "setmealCache",key = "#setmealDto.categoryId + '_' + #setmealDto.status")
     public Result<List<SetmealDto>> getSetmealList(SetmealDto setmealDto) {
         String key = "setMeal_" + setmealDto.getCategoryId() + "_" + setmealDto.getStatus();
 
-        List<SetmealDto> setmealDtoList;
+        /*List<SetmealDto> setmealDtoList;
         setmealDtoList = (List<SetmealDto>) redisTemplate.opsForValue().get(key);
         if (setmealDtoList != null){
             return Result.success(setmealDtoList);
-        }
+        }*/
 
         LambdaQueryWrapper<Setmeal> lqw = new LambdaQueryWrapper<>();
         lqw.eq(Setmeal::getCategoryId,setmealDto.getCategoryId());
@@ -180,7 +187,7 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
         lqw.orderByAsc(Setmeal::getUpdateTime);
         List<Setmeal> setmealList = setmealMapper.selectList(lqw);
 
-        setmealDtoList = setmealList.stream().map(item -> {
+        List<SetmealDto> setmealDtoList = setmealList.stream().map(item -> {
             SetmealDto setmealDto1 = new SetmealDto();
             BeanUtils.copyProperties(item, setmealDto1);
 
@@ -192,7 +199,7 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
             return setmealDto1;
         }).collect(Collectors.toList());
 
-        redisTemplate.opsForValue().set(key,setmealDtoList,60, TimeUnit.MINUTES);
+        //redisTemplate.opsForValue().set(key,setmealDtoList,60, TimeUnit.MINUTES);
         return Result.success(setmealDtoList);
     }
 

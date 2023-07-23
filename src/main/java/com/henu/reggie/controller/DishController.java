@@ -12,6 +12,8 @@ import com.henu.reggie.service.DishFlavorService;
 import com.henu.reggie.service.DishService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
@@ -124,15 +126,16 @@ public class DishController {
      * @return
      */
     @GetMapping("/list")
+    @Cacheable(value = "dishCache",key = "#dish.categoryId + '_' + #dish.status")
     public Result<List<DishDto>> getDish(Dish dish){
         Long categoryId = dish.getCategoryId();
         List<DishDto> dishDtoList = null;
-        String key = "dish_" + categoryId + "_" + dish.getStatus();
+        /*String key = "dish_" + categoryId + "_" + dish.getStatus();
         dishDtoList = (List<DishDto>) redisTemplate.opsForValue().get(key);
         //Redis中有缓存的数据
         if (dishDtoList != null){
             return Result.success(dishDtoList);
-        }
+        }*/
 
         //Redis中没有缓存的数据
         LambdaQueryWrapper<Dish> lqw = new LambdaQueryWrapper<>();
@@ -156,7 +159,7 @@ public class DishController {
         }).collect(Collectors.toList());
 
         //将查到的数据存入缓存中
-        redisTemplate.opsForValue().set(key,dishDtoList,60, TimeUnit.MINUTES);
+        //redisTemplate.opsForValue().set(key,dishDtoList,60, TimeUnit.MINUTES);
         return Result.success(dishDtoList);
     }
 

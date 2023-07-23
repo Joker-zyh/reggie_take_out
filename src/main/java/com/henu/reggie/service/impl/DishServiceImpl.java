@@ -11,6 +11,8 @@ import com.henu.reggie.service.*;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -82,6 +84,7 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements Di
      */
     @Transactional
     @Override
+    @CacheEvict(value = "dishCache",key = "#dishDto.categoryId + '_1'")
     public Result<Dish> insert(com.henu.reggie.dto.DishDto dishDto) {
         dishMapper.insert(dishDto);
         List<DishFlavor> flavorList = dishDto.getFlavors();
@@ -94,8 +97,8 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements Di
         dishFlavorService.saveBatch(list);
 
         //修改时删除缓存数据
-        String key = "dish_" + dishDto.getCategoryId() + "_1";
-        redisTemplate.delete(key);
+        /*String key = "dish_" + dishDto.getCategoryId() + "_1";
+        redisTemplate.delete(key);*/
 
         return Result.success(null);
     }
@@ -127,6 +130,7 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements Di
      */
     @Transactional
     @Override
+    @CacheEvict(value = "dishCache",key = "#dishDto.categoryId + '_1'")
     public Result<com.henu.reggie.dto.DishDto> updateWithFlavor(com.henu.reggie.dto.DishDto dishDto) {
         dishMapper.updateById(dishDto);
 
@@ -142,8 +146,8 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements Di
         dishFlavorService.saveBatch(list);
 
         //修改时删除缓存数据
-        String key = "dish_" + dishDto.getCategoryId() + "_1";
-        redisTemplate.delete(key);
+        /*String key = "dish_" + dishDto.getCategoryId() + "_1";
+        redisTemplate.delete(key);*/
 
         return Result.success(null);
     }
@@ -191,7 +195,13 @@ public class DishServiceImpl extends ServiceImpl<DishMapper, Dish> implements Di
         return Result.success("修改成功");
     }
 
+    /**
+     * (批量）删除菜品
+     * @param ids
+     * @return
+     */
     @Override
+    @CacheEvict(value = "dishCache",allEntries = true)
     public Result<String> delete(List<Long> ids) {
         //菜品是否关联套餐
         LambdaQueryWrapper<SetmealDish> lqw = new LambdaQueryWrapper<>();
