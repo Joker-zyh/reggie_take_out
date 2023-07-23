@@ -16,10 +16,12 @@ import com.henu.reggie.service.SetmealService;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,6 +34,9 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
 
     @Autowired
     private SetmealDishService setmealDishService;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
 
     @Override
     public Result<Page> pageSelect(int page, int pageSize, String name) {
@@ -77,6 +82,10 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
         //在套餐菜品表添加数据
         setmealDishService.saveBatch(list);
 
+        //修改时删除缓存数据
+        String key = "setMeal_" + setmealDto.getCategoryId() + "_1";
+        redisTemplate.delete(key);
+
         return Result.success(null);
     }
 
@@ -117,6 +126,10 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
         List<SetmealDish> list = setSetmealId(setmealDto);
         setmealDishService.saveBatch(list);
 
+        //修改时删除缓存数据
+        String key = "setMeal_" + setmealDto.getCategoryId() + "_1";
+        redisTemplate.delete(key);
+
         return Result.success(null);
     }
 
@@ -153,11 +166,21 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
      */
     @Override
     public Result<List<SetmealDto>> getSetmealList(SetmealDto setmealDto) {
+        String key = "setMeal_" + setmealDto.getCategoryId() + "_" + setmealDto.getStatus();
+
+        List<SetmealDto> setmealDtoList;
+        setmealDtoList = (List<SetmealDto>) redisTemplate.opsForValue().get(key);
+        if (setmealDtoList != null){
+            return Result.success(setmealDtoList);
+        }
+
         LambdaQueryWrapper<Setmeal> lqw = new LambdaQueryWrapper<>();
         lqw.eq(Setmeal::getCategoryId,setmealDto.getCategoryId());
+        lqw.eq(Setmeal::getStatus,setmealDto.getStatus());
+        lqw.orderByAsc(Setmeal::getUpdateTime);
         List<Setmeal> setmealList = setmealMapper.selectList(lqw);
 
-        List<SetmealDto> setmealDtoList = setmealList.stream().map(item -> {
+        setmealDtoList = setmealList.stream().map(item -> {
             SetmealDto setmealDto1 = new SetmealDto();
             BeanUtils.copyProperties(item, setmealDto1);
 
@@ -169,6 +192,7 @@ public class SetmealServiceImpl extends ServiceImpl<SetmealMapper, Setmeal> impl
             return setmealDto1;
         }).collect(Collectors.toList());
 
+        redisTemplate.opsForValue().set(key,setmealDtoList,60, TimeUnit.MINUTES);
         return Result.success(setmealDtoList);
     }
 

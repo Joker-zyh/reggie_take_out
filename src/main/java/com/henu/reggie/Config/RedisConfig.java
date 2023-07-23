@@ -20,8 +20,8 @@ public class RedisConfig extends CachingConfigurerSupport {
         return redisTemplate;
     }
 
-    @Bean
+    /*@Bean
     public RedisConnectionFactory redisConnectionFactory(){
         return new JedisConnectionFactory();
-    }
+    }*/
 }

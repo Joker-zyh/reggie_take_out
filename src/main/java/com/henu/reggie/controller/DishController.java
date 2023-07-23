@@ -12,10 +12,12 @@ import com.henu.reggie.service.DishFlavorService;
 import com.henu.reggie.service.DishService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @RestController
@@ -29,6 +31,11 @@ public class DishController {
 
     @Autowired
     private CategoryService categoryService;
+
+    @Autowired
+    private RedisTemplate redisTemplate;
+
+
     /**
      * 菜品分页查询
      * @param page
@@ -119,13 +126,22 @@ public class DishController {
     @GetMapping("/list")
     public Result<List<DishDto>> getDish(Dish dish){
         Long categoryId = dish.getCategoryId();
+        List<DishDto> dishDtoList = null;
+        String key = "dish_" + categoryId + "_" + dish.getStatus();
+        dishDtoList = (List<DishDto>) redisTemplate.opsForValue().get(key);
+        //Redis中有缓存的数据
+        if (dishDtoList != null){
+            return Result.success(dishDtoList);
+        }
+
+        //Redis中没有缓存的数据
         LambdaQueryWrapper<Dish> lqw = new LambdaQueryWrapper<>();
         lqw.eq(categoryId != null, Dish::getCategoryId,categoryId);
         lqw.eq(Dish::getStatus,"1");
         lqw.orderByAsc(Dish::getSort).orderByDesc(Dish::getUpdateTime);
         List<Dish> dishList = dishService.list(lqw);
 
-        List<DishDto> dishDtoList = dishList.stream().map(item -> {
+        dishDtoList = dishList.stream().map(item -> {
             DishDto dishDto = new DishDto();
             BeanUtils.copyProperties(item, dishDto);
 
@@ -139,6 +155,8 @@ public class DishController {
             return dishDto;
         }).collect(Collectors.toList());
 
+        //将查到的数据存入缓存中
+        redisTemplate.opsForValue().set(key,dishDtoList,60, TimeUnit.MINUTES);
         return Result.success(dishDtoList);
     }
 

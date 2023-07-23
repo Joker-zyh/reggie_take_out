@@ -13,7 +13,7 @@ spring:
   #redis
   redis:
     host: localhost
-    #password: 790268
+    password: 790268
     port: 6379
     database: 0
 

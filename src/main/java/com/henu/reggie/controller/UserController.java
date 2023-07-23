@@ -10,13 +10,16 @@ import com.henu.reggie.utils.ValidateCodeUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @RestController
@@ -24,6 +27,9 @@ import java.util.Map;
 public class UserController {
     @Autowired
     private UserService userService;
+
+    @Resource
+    private RedisTemplate<String,Object> redisTemplate;
 
     @PostMapping("/sendMsg")
     public Result<String> getRandomNum(HttpServletRequest request, @RequestBody User user){
@@ -38,10 +44,11 @@ public class UserController {
         log.info("code:{}",code);
 
         //调用api发短信
-        SMSUtils.sendMessage("joker","SMS_462010462",phone,code);
+        //SMSUtils.sendMessage("joker","SMS_462010462",phone,code);
 
-        //将手机号和验证码存入session
-        request.getSession().setAttribute(phone,code);
+        //将手机号和验证码存入redis
+        redisTemplate.opsForValue().set(phone,code,5, TimeUnit.MINUTES);
+        //request.getSession().setAttribute(phone,code);
         return Result.success("验证码发送成功");
     }
 
@@ -49,7 +56,10 @@ public class UserController {
     public Result<User> login(@RequestBody Map<String,String> map,HttpServletRequest request){
         String phone = map.get("phone");
         String code = map.get("code");
-        Object codeInSession = request.getSession().getAttribute(phone);
+        //Object codeInSession = request.getSession().getAttribute(phone);
+        //从redis中得到验证码
+        Object codeInSession = redisTemplate.opsForValue().get(phone);
+
         if (codeInSession != null && codeInSession.equals(code)){
             //验证码正确，判断是否为新用户，是新用户自动注册
             LambdaQueryWrapper<User> lqw = new LambdaQueryWrapper<>();
@@ -64,6 +74,8 @@ public class UserController {
             }
 
             request.getSession().setAttribute("user",user.getId());
+            //登录成功删除redis中验证码
+            redisTemplate.delete(phone);
             return Result.success(user);
         }
         return Result.error("验证码错误");
