@@ -100,7 +100,7 @@ public class OrdersController {
         LambdaQueryWrapper<Orders> lqw = new LambdaQueryWrapper<>();
         lqw.eq(Orders::getUserId,currentId);
         lqw.orderByDesc(Orders::getOrderTime);
-        ordersService.page(pageInfo,lqw);
+        Page<Orders> page1 = ordersService.page(pageInfo, lqw);
 
         BeanUtils.copyProperties(pageInfo,pageInfo2,"records");
 

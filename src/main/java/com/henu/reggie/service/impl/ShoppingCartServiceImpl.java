@@ -25,7 +25,7 @@ public class ShoppingCartServiceImpl extends ServiceImpl<ShoppingCartMapper, Sho
      */
     @Override
     public Result<ShoppingCart> add(ShoppingCart shoppingCart) {
-        //判断数据库中该用户是否已选该菜品
+        //判断数据库购物车中该用户是否已选该菜品
         Long currentId = BaseContext.getCurrentId();
         shoppingCart.setUserId(currentId);
         shoppingCart.setCreateTime(LocalDateTime.now());
